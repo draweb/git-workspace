@@ -1,0 +1,44 @@
+# Dependencias
+node_modules/
+
+# Logs y depuración
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cobertura de tests
+coverage/
+.nyc_output/
+
+# Entorno local (no subir secretos)
+.env
+.env.*
+!.env.example
+
+# Builds / empaquetado (si se añaden más adelante)
+dist/
+build/
+*.tgz
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / editor
+.idea/
+*.swp
+*.swo
+*~
+
+# Cursor / VS Code (opcional: quita la línea si quieres versionar ajustes del equipo)
+.vscode/*
+!.vscode/extensions.json
+
+# Temporal
+tmp/
+temp/
+*.tmp
