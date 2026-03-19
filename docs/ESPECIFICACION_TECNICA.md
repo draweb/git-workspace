@@ -331,4 +331,4 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 
 ---
 
-*Documento generado a partir del código fuente del proyecto gw. Versión del documento: 1.0.*
+*Documento generado a partir del código fuente del proyecto gw. Versión del documento: 1.0. Creador del proyecto: `draweb.cloud`.*

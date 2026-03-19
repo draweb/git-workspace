@@ -1,5 +1,9 @@
 # gw – Git Workspace CLI
 
+![gw header](docs/assets/gw-header.png)
+
+**Creador:** `draweb.cloud`
+
 **gw** es una interfaz de línea de comandos que se comporta como **git**, pero añade **workspaces**: perfiles con nombre, email de commit y **clave SSH propia**. Así puedes trabajar en el mismo ordenador con varias identidades (cliente, empresa personal, cuenta secundaria, open source, etc.) sin estar cambiando a mano `git config` global ni confundir qué clave usa cada repositorio.
 
 ---
