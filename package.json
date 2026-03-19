@@ -1,19 +1,34 @@
 {
-  "name": "gw",
-  "version": "1.0.0",
+  "name": "@draweb/gw",
+  "version": "1.0.1",
   "description": "Git Workspace CLI - manage multiple git identities and SSH keys per workspace",
   "main": "src/cli.js",
   "bin": {
-    "gw": "./bin/gw.js"
+    "gw": "bin/gw.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "docs"
+  ],
   "scripts": {
     "start": "node bin/gw.js",
-    "test": "node --test test/config.test.js test/constants.test.js test/git-context.test.js test/ssh-config.test.js test/url-utils.test.js test/validate.test.js",
+    "test": "node --test test/config.test.js test/constants.test.js test/git-context.test.js test/ssh-config.test.js test/url-utils.test.js test/validate.test.js test/workspace-pubkey.test.js",
     "test:manual": "node test/manual.js"
   },
-  "keywords": ["git", "workspace", "ssh", "cli", "identity"],
+  "keywords": [
+    "git",
+    "workspace",
+    "ssh",
+    "cli",
+    "identity"
+  ],
   "author": "",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

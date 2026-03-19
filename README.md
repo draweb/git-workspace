@@ -1,8 +1,47 @@
 # gw – Git Workspace CLI
 
-CLI tipo git que añade **workspaces**: cada workspace asocia un usuario git (name, email) y una clave SSH. Permite clonar y trabajar con varios repos usando distintas identidades sin cambiar la config global.
+**gw** es una interfaz de línea de comandos que se comporta como **git**, pero añade **workspaces**: perfiles con nombre, email de commit y **clave SSH propia**. Así puedes trabajar en el mismo ordenador con varias identidades (cliente, empresa personal, cuenta secundaria, open source, etc.) sin estar cambiando a mano `git config` global ni confundir qué clave usa cada repositorio.
 
-Cualquier comando que no sea propio de gw se reenvía a **git**; puedes usar `gw` en lugar de `git` en el día a día.
+---
+
+## El problema que resuelve
+
+Si tienes **más de un contexto** en Git (dos cuentas de GitHub/GitLab, trabajo y personal, varios clientes…), suele pasar esto:
+
+| Situación | Dolor habitual |
+|-----------|----------------|
+| Varios usuarios en el mismo PC | `git config user.name` / `user.email` global solo admite **una** identidad; los commits salen con el autor equivocado. |
+| Varias claves SSH | Sin reglas claras en `~/.ssh/config`, **SSH elige la clave incorrecta** y falla el push o accedes con la cuenta que no toca. |
+| Cambiar de repo | Tienes que acordarte de reconfigurar el repo o exportar `GIT_SSH_COMMAND`… fácil de olvidar y poco reproducible. |
+| Clonar con la identidad correcta | Clonas con HTTPS o una URL genérica y luego arreglas a mano remotes y credenciales. |
+
+**gw** automatiza eso: cada **workspace** guarda *quién eres en git* y *qué clave SSH usar*; al clonar o enlazar un repo, gw escribe la configuración local del repositorio y crea **alias SSH** del tipo `miempresa.github.com` que apuntan al host real con la clave adecuada.
+
+---
+
+## La solución en una frase
+
+> **Un workspace = una identidad git + una clave SSH.** Los repos que creas o enlazas con `-w <workspace>` quedan configurados para usar solo esa identidad y esa clave, sin tocar tu configuración global de git.
+
+---
+
+## Qué obtienes con gw
+
+- **Identidades aisladas**: `user.name` y `user.email` por repositorio cuando usas clone/init/repo link con workspace.
+- **SSH predecible**: entradas en `~/.ssh/config` (`Host <workspace>.<servidor>`) para que cada URL use la clave del workspace correcto.
+- **Menos comandos repetidos**: `gw push`, `gw pull` y `gw fetch` pueden usar el workspace y los remotes ya marcados en `.git/config` (sin repetir `origin` si no quieres).
+- **Compatibilidad con git**: cualquier comando que **no** sea propio de gw se ejecuta como **`git …`**. Puedes sustituir `git` por `gw` en el día a día y seguir usando `gw status`, `gw commit`, `gw log`, etc.
+- **Varios remotes / mirrors**: puedes asociar remotes a un workspace y usar `--all-remotes` en push/fetch cuando lo necesites.
+
+---
+
+## Para quién es
+
+- Desarrolladores con **cuenta personal y de trabajo** (o varios clientes) en el mismo equipo.
+- Equipos que quieren **documentar y repetir** cómo se configura la identidad por proyecto sin scripts ad hoc.
+- Quien ya usa SSH con git y quiere **dejar de pelear** con `IdentityFile` y commits con el autor incorrecto.
+
+---
 
 ## Requisitos
 
@@ -12,16 +51,36 @@ Cualquier comando que no sea propio de gw se reenvía a **git**; puedes usar `gw
 
 ## Instalación
 
+El paquete en npm es **[@draweb/gw](https://www.npmjs.com/package/@draweb/gw)** (scope `@draweb`). El ejecutable global sigue llamándose **`gw`**.
+
 ```bash
-npm install -g gw
+npm install -g @draweb/gw
 ```
 
-O desde el repo:
+Comprueba la instalación:
+
+```bash
+gw --version
+gw --help
+```
+
+**Ejecutar sin instalar globalmente** (usa la última versión publicada al vuelo):
+
+```bash
+npx @draweb/gw --help
+```
+
+### Desarrollo (desde el repositorio clonado)
 
 ```bash
 cd git_workspace
+npm install
 npm link
 ```
+
+Tras `npm link`, el comando `gw` apunta al código local del repo.
+
+Si `npm install -g @draweb/gw` responde **404**, la versión aún no está publicada en el registro: publica con `npm publish` desde este repo (cuenta npm con acceso al scope **@draweb** y 2FA/token según política de npm).
 
 ## Uso básico
 
@@ -64,6 +123,10 @@ gw workspace remove draweb
 gw workspace remove draweb --clean-ssh   # y quitar hosts de ~/.ssh/config
 gw workspace current   # dentro de un repo: workspace asociado
 gw workspace edit draweb --email nuevo@email.com
+# Imprimir la clave pública en consola (para pegar en GitHub/GitLab):
+gw workspace pubkey draweb
+# En Windows, copiar al portapapeles:
+gw workspace pubkey draweb | clip
 ```
 
 ### 4. Remotes con workspace (mirrors)
@@ -123,6 +186,11 @@ gw log --oneline
 ```
 
 Para la ayuda de un comando de git: `gw commit --help` muestra la ayuda de `git commit`.
+
+## Ayuda en consola
+
+- `gw -h` / `gw --help` — visión general del CLI.
+- `gw workspace --help` — subcomandos de workspace (`add`, `list`, `show`, `pubkey`, `current`, `edit`, `remove`, …).
 
 ## Configuración
 

@@ -302,11 +302,22 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 
 ---
 
-## 10. Dependencias (package.json)
+## 10. Dependencias y distribución npm
+
+### Dependencias (package.json)
 
 - **commander**: ^12.0.0 — CLI y subcomandos.
 - **prompts**: ^2.4.2 — entradas interactivas en workspace add.
 - **Engines**: node >= 18.0.0.
+
+### Paquete en el registro npm
+
+- **Nombre**: `@draweb/gw` (paquete con **scope** `@draweb`). No confundir con el nombre corto del binario en consola.
+- **Binario global**: sigue siendo **`gw`** (`bin.gw` → `bin/gw.js` en el tarball).
+- **Instalación para usuarios**: `npm install -g @draweb/gw`. Alternativa sin instalar globalmente: `npx @draweb/gw <argumentos>`.
+- **Archivos publicados** (`files` en package.json): `bin/`, `src/`, `README.md`, `docs/` (los tests no se incluyen en el paquete publicado).
+- **publishConfig**: `access: "public"` — el scope se publica como paquete **público** (sin esto, los paquetes scoped serían privados por defecto en npm).
+- **Validación local del tarball**: `npm pack --dry-run` debe listar `bin/gw.js`, `package.json` con `bin` intacto y sin advertencias de bin inválido.
 
 ---
 

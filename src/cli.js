@@ -162,6 +162,13 @@ function main() {
         process.exit(require('./commands/workspace-show').run(nombre));
       });
     workspaceCmd
+      .command('pubkey <nombre>')
+      .description('Imprime la clave pública SSH en stdout (equivalente a cat de la .pub)')
+      .addHelpText('after', '\nEjemplo:\n  gw workspace pubkey draweb\n  gw workspace pubkey draweb | clip')
+      .action((nombre) => {
+        process.exit(require('./commands/workspace-pubkey').run(nombre));
+      });
+    workspaceCmd
       .command('current')
       .description('Mostrar el workspace asociado al repo actual')
       .action(() => {
