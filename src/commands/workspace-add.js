@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw workspace add <nombre> [--name ... --email ... --identity-file ... --new-key]
+ * Uso: Crea un workspace con identidad git y clave SSH asociada.
+ * Ejemplo: gw workspace add draweb --name "Tu Nombre" --email tu@email.com --new-key
+ */
+
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -7,12 +13,13 @@ const config = require('../config');
 const sshConfig = require('../ssh-config');
 const { validateWorkspaceName, validateEmail } = require('../utils/validate');
 const { EXIT_CODES } = require('../constants');
+const { iconOk } = require('../term-ui');
 
 const prompts = require('prompts');
 
 function getDefaultKeyPath(workspaceName) {
   const home = os.homedir();
-  return path.join(home, '.ssh', 'id_ed25519_' + workspaceName);
+  return path.join(home, '.ssh', 'id_rsa_' + workspaceName);
 }
 
 async function run(nombre, opts, deps) {
@@ -56,20 +63,13 @@ async function run(nombre, opts, deps) {
     identityFile = path.normalize(resolved);
   } else if (useNewKey && runSshKeygen) {
     const keyPath = getDefaultKeyPath(nombre);
-    const args = ['-t', 'ed25519', '-C', email, '-f', keyPath, '-N', ''];
+    const args = ['-t', 'rsa', '-b', '4096', '-C', email, '-f', keyPath, '-N', ''];
     const code = await runSshKeygen(args);
     if (code !== 0) {
-      const rsaPath = path.join(os.homedir(), '.ssh', 'id_rsa_' + nombre);
-      const rsaArgs = ['-t', 'rsa', '-b', '4096', '-C', email, '-f', rsaPath, '-N', ''];
-      const codeRsa = await runSshKeygen(rsaArgs);
-      if (codeRsa !== 0) {
-        console.error('gw: no se pudo generar la clave SSH.');
-        return EXIT_CODES.EXTERNAL;
-      }
-      identityFile = rsaPath;
-    } else {
-      identityFile = keyPath;
+      console.error('gw: no se pudo generar la clave SSH (RSA 4096).');
+      return EXIT_CODES.EXTERNAL;
     }
+    identityFile = keyPath;
   } else {
     const keys = sshConfig.listIdentityFiles();
     let choice;
@@ -82,10 +82,10 @@ async function run(nombre, opts, deps) {
         initial: true
       });
       if (!keyPathRes.create) return EXIT_CODES.USAGE;
-      const args = ['-t', 'ed25519', '-C', email, '-f', keyPath, '-N', ''];
+      const args = ['-t', 'rsa', '-b', '4096', '-C', email, '-f', keyPath, '-N', ''];
       const code = await runSshKeygen(args);
       if (code !== 0) {
-        console.error('gw: no se pudo generar la clave.');
+        console.error('gw: no se pudo generar la clave RSA 4096.');
         return EXIT_CODES.EXTERNAL;
       }
       identityFile = keyPath;
@@ -103,10 +103,10 @@ async function run(nombre, opts, deps) {
       });
       if (res.key === '__new__') {
         const keyPath = getDefaultKeyPath(nombre);
-        const args = ['-t', 'ed25519', '-C', email, '-f', keyPath, '-N', ''];
+        const args = ['-t', 'rsa', '-b', '4096', '-C', email, '-f', keyPath, '-N', ''];
         const code = await runSshKeygen(args);
         if (code !== 0) {
-          console.error('gw: no se pudo generar la clave.');
+          console.error('gw: no se pudo generar la clave RSA 4096.');
           return EXIT_CODES.EXTERNAL;
         }
         identityFile = keyPath;
@@ -118,7 +118,7 @@ async function run(nombre, opts, deps) {
 
   try {
     config.addWorkspace(nombre, { name, email, identityFile });
-    console.log('Workspace "' + nombre + '" añadido.');
+    console.log(iconOk(process.stdout) + 'Workspace "' + nombre + '" añadido.');
     return EXIT_CODES.SUCCESS;
   } catch (e) {
     console.error('gw:', e.message);

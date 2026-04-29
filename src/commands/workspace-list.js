@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw workspace list
+ * Uso: Lista todos los workspaces configurados en gw.
+ * Ejemplo: gw workspace list
+ */
+
 const config = require('../config');
 const { EXIT_CODES } = require('../constants');
 

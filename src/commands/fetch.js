@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw fetch [remote] [--all-remotes] [args...]
+ * Uso: Hace fetch con contexto de workspace o a todos los remotes asociados.
+ * Ejemplo: gw fetch --all-remotes
+ */
+
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');
 

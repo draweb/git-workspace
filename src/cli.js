@@ -3,8 +3,24 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const { EXIT_CODES } = require('./constants');
+const helpFormat = require('./help-format');
+const { withSpinner } = require('./term-ui');
 
 const { program } = require('commander');
+
+function runSshKeygenWithSpinner(args) {
+  const merged = args[0] === '-q' ? args.slice() : ['-q', ...args];
+  return withSpinner('Generando clave RSA…', () =>
+    new Promise((resolve) => {
+      const c = require('child_process').spawn('ssh-keygen', merged, { stdio: 'ignore' });
+      c.on('close', (code) => resolve(code !== null ? code : 0));
+      c.on('error', (e) => {
+        console.error('gw:', e.message);
+        resolve(EXIT_CODES.EXTERNAL);
+      });
+    })
+  );
+}
 
 function runGit(args, cwd) {
   return new Promise((resolve) => {
@@ -106,7 +122,8 @@ function main() {
       .description('Git Workspace CLI. Comandos propios: workspace, clone -w, remote -w, push/pull/fetch, init -w, repo link, doctor. El resto se reenvía a git.')
       .version(pkg.version, '-V, --version')
       .helpOption('-h, --help')
-      .addHelpText('after', '\nEjemplos:\n  gw workspace list\n  gw clone -w draweb git@github.com:user/repo.git\n  gw remote add origin -w draweb git@github.com:user/repo.git');
+      .addHelpText('before', () => helpFormat.helpBannerBefore('root'))
+      .addHelpText('after', () => helpFormat.rootHelpAfter(pkg));
     program.parse(process.argv);
     if (argv.length === 0) program.outputHelp();
     process.exit(EXIT_CODES.SUCCESS);
@@ -122,7 +139,12 @@ function main() {
 
   if (argv[0] === 'workspace') {
     program.name('gw').version(pkg.version);
-    const workspaceCmd = program.command('workspace').description('Gestionar workspaces (add, list, remove, show, current, edit)');
+    const workspaceCmd = program
+      .command('workspace')
+      .description('Gestionar workspaces (add, list, remove, show, pubkey, current, edit, key rotate)');
+    workspaceCmd
+      .addHelpText('before', () => helpFormat.helpBannerBefore('workspace'))
+      .addHelpText('after', () => helpFormat.workspaceHelpAfter());
     workspaceCmd
       .command('add <nombre>')
       .description('Añadir un workspace (pide name, email y clave SSH)')
@@ -133,12 +155,7 @@ function main() {
       .addHelpText('after', '\nEjemplos:\n  gw workspace add draweb\n  gw workspace add myws --name "Me" --email me@x.com --new-key')
       .action(async (nombre, opts) => {
         const workspaceAdd = require('./commands/workspace-add');
-        const runSshKeygen = (args) => new Promise((resolve) => {
-          const c = require('child_process').spawn('ssh-keygen', args, { stdio: 'inherit' });
-          c.on('close', (code) => resolve(code !== null ? code : 0));
-          c.on('error', (e) => { console.error('gw:', e.message); resolve(EXIT_CODES.EXTERNAL); });
-        });
-        const code = await workspaceAdd.run(nombre, opts, { runSshKeygen });
+        const code = await workspaceAdd.run(nombre, opts, { runSshKeygen: runSshKeygenWithSpinner });
         process.exit(code);
       });
     workspaceCmd
@@ -182,6 +199,22 @@ function main() {
       .option('--identity-file <path>', 'Nueva ruta a clave SSH')
       .action((nombre, opts) => {
         process.exit(require('./commands/workspace-edit').run(nombre, opts));
+      });
+    const workspaceKeyCmd = workspaceCmd
+      .command('key')
+      .description('Operaciones sobre claves del workspace');
+    workspaceKeyCmd
+      .addHelpText('before', () => helpFormat.helpBannerBefore('key'))
+      .addHelpText('after', () => helpFormat.workspaceKeyHelpAfter());
+    workspaceKeyCmd
+      .command('rotate <nombre>')
+      .description('Regenera la clave RSA de un workspace (con confirmación y backup)')
+      .addHelpText('after', '\nEjemplo:\n  gw workspace key rotate draweb')
+      .action(async (nombre) => {
+        const rotateCmd = require('./commands/workspace-key-rotate');
+        const runSshKeygen = runSshKeygenWithSpinner;
+        const code = await rotateCmd.run(nombre, {}, { runSshKeygen });
+        process.exit(code);
       });
     program.parse(process.argv);
     if (argv.length === 1 || argv[1] === '--help' || argv[1] === '-h') {

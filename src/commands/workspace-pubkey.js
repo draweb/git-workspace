@@ -1,21 +1,16 @@
 'use strict';
 
+/**
+ * Comando: gw workspace pubkey <nombre>
+ * Uso: Imprime en consola la clave pública del workspace (validando prefijo ssh-rsa).
+ * Ejemplo: gw workspace pubkey draweb | clip
+ */
+
 const fs = require('fs');
-const path = require('path');
 const config = require('../config');
+const { publicKeyPath, ensureSshRsaPublicKey } = require('../ssh-key-utils');
 const { validateWorkspaceName } = require('../utils/validate');
 const { EXIT_CODES } = require('../constants');
-
-/**
- * Ruta del fichero .pub asociado a identityFile del workspace.
- */
-function publicKeyPath(identityFile) {
-  const normalized = path.normalize(identityFile);
-  if (normalized.toLowerCase().endsWith('.pub')) {
-    return normalized;
-  }
-  return normalized + '.pub';
-}
 
 function run(nombre) {
   const v = validateWorkspaceName(nombre);
@@ -34,13 +29,18 @@ function run(nombre) {
     console.error('gw: si solo tienes la privada, genera la .pub con: ssh-keygen -y -f "' + workspace.identityFile + '" > "' + pubPath + '"');
     return EXIT_CODES.USAGE;
   }
-  try {
-    const content = fs.readFileSync(pubPath, 'utf8').trim();
-    process.stdout.write(content + '\n');
-  } catch (e) {
-    console.error('gw: no se pudo leer', pubPath, ':', e.message);
-    return EXIT_CODES.ENV;
+  const pub = ensureSshRsaPublicKey(workspace.identityFile);
+  if (!pub.ok) {
+    if (pub.code === 'INVALID_PREFIX') {
+      console.error('gw: la clave pública debe comenzar con "ssh-rsa". Archivo:', pub.pubPath);
+      return EXIT_CODES.USAGE;
+    }
+    if (pub.code === 'READ_ERROR') {
+      console.error('gw: no se pudo leer', pub.pubPath, ':', pub.error.message);
+      return EXIT_CODES.ENV;
+    }
   }
+  process.stdout.write(pub.content + '\n');
   return EXIT_CODES.SUCCESS;
 }
 

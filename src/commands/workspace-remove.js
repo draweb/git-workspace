@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw workspace remove <nombre> [--clean-ssh]
+ * Uso: Elimina un workspace de la config y opcionalmente limpia hosts SSH.
+ * Ejemplo: gw workspace remove draweb --clean-ssh
+ */
+
 const config = require('../config');
 const sshConfig = require('../ssh-config');
 const { validateWorkspaceName } = require('../utils/validate');

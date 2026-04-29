@@ -1,9 +1,16 @@
 'use strict';
 
+/**
+ * Comando: gw remote set-url <nombre> -w <workspace> <url-ssh>
+ * Uso: Actualiza URL de remote usando alias SSH del workspace.
+ * Ejemplo: gw remote set-url origin -w draweb git@github.com:org/repo.git
+ */
+
 const config = require('../config');
 const sshConfig = require('../ssh-config');
 const gitContext = require('../git-context');
 const { parseSshUrl, buildAliasedUrl, isSshUrl } = require('../url-utils');
+const { ensureSshRsaPublicKey } = require('../ssh-key-utils');
 const { GIT_CONFIG_REMOTE_GW_WORKSPACE, EXIT_CODES } = require('../constants');
 
 function run(remoteName, workspaceName, url, deps) {
@@ -11,6 +18,21 @@ function run(remoteName, workspaceName, url, deps) {
   if (!workspace) {
     console.error("gw: workspace '" + workspaceName + "' no encontrado.");
     return Promise.resolve(EXIT_CODES.USAGE);
+  }
+  const pub = ensureSshRsaPublicKey(workspace.identityFile);
+  if (!pub.ok) {
+    if (pub.code === 'MISSING_PUB') {
+      console.error('gw: no existe la clave pública del workspace:', pub.pubPath);
+      return Promise.resolve(EXIT_CODES.ENV);
+    }
+    if (pub.code === 'INVALID_PREFIX') {
+      console.error('gw: la clave pública del workspace debe iniciar con "ssh-rsa". Archivo:', pub.pubPath);
+      return Promise.resolve(EXIT_CODES.USAGE);
+    }
+    if (pub.code === 'READ_ERROR') {
+      console.error('gw: no se pudo leer la clave pública del workspace:', pub.pubPath);
+      return Promise.resolve(EXIT_CODES.ENV);
+    }
   }
   if (!isSshUrl(url)) {
     console.error('gw: la URL debe ser SSH.');

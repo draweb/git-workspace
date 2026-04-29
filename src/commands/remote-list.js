@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw remote -v | gw remote list
+ * Uso: Lista remotes y muestra a qué workspace están asociados.
+ * Ejemplo: gw remote -v
+ */
+
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');
 

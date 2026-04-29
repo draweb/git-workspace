@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw workspace edit <nombre> [--name ...] [--email ...] [--identity-file ...]
+ * Uso: Edita los datos de un workspace existente.
+ * Ejemplo: gw workspace edit draweb --email nuevo@email.com
+ */
+
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

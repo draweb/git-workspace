@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw init -w <workspace> [args...]
+ * Uso: Inicializa un repo git y aplica identidad/config del workspace.
+ * Ejemplo: gw init -w draweb
+ */
+
 const config = require('../config');
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');

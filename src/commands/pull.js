@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw pull [remote] [args...]
+ * Uso: Hace pull del remote asociado al workspace actual si no se indica uno.
+ * Ejemplo: gw pull
+ */
+
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');
 

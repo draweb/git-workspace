@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw push [remote] [--all-remotes] [args...]
+ * Uso: Hace push según el workspace actual o a todos los remotes asociados.
+ * Ejemplo: gw push --all-remotes
+ */
+
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');
 

@@ -33,9 +33,9 @@ Documento de especificación técnica del proyecto **gw**: CLI que extiende git 
 ### 3.2 Orden de resolución de comandos (cli.js)
 
 1. `--version` / `-V` → imprime versión, exit 0.
-2. `--help` / `-h` o sin argumentos → ayuda con Commander, exit 0.
+2. `--help` / `-h` o sin argumentos → ayuda con Commander más bloques `addHelpText` (cabecera opcional, secciones y guía de ayuda anidada), exit 0.
 3. **Clone con workspace**: `clone -w <ws> <url>` o `clone --workspace <ws> <url>` → `commands/clone`.
-4. **workspace** → subcomandos: add, list, remove, show, current, edit.
+4. **workspace** → subcomandos: add, list, remove, show, pubkey, current, edit, key rotate.
 5. **remote**: `-v` / `list` → remote-list; `add <name> -w <ws> <url>` → remote-add; `set-url <name> -w <ws> <url>` → remote-set-url.
 6. **init** con `-w` / `--workspace` → commands/init.
 7. **repo link** con `-w` / `--workspace` → commands/repo-link.
@@ -51,6 +51,9 @@ Documento de especificación técnica del proyecto **gw**: CLI que extiende git 
 bin/gw.js
   └── src/cli.js
         ├── constants.js      (rutas, códigos salida, regex, nombres git config)
+        ├── term-style.js     (colores ANSI opcionales: NO_COLOR, GW_COLOR, TTY)
+        ├── term-ui.js        (iconos GW_ICONS; spinner GW_SPINNER / stderr TTY)
+        ├── help-format.js    (cabecera GW_BANNER, taglines, bloques post-ayuda)
         ├── config.js         (config gw: getWorkspaces, addWorkspace, …)
         ├── ssh-config.js     (parse/escritura ~/.ssh/config)
         ├── url-utils.js      (parseSshUrl, isSshUrl, buildAliasedUrl)
@@ -61,6 +64,24 @@ bin/gw.js
 
 - **Comander**: definición de subcomandos y opciones (workspace add/list/…).
 - **prompts**: entradas interactivas en `workspace add` cuando faltan name/email o clave.
+
+### 3.4 Ayuda CLI y presentación
+
+- **Ayuda raíz** (`gw -h`): `help-format.helpBannerBefore('root')` + salida estándar de Commander + `rootHelpAfter(pkg)` (inicio rápido, comandos agrupados, rutas de config, enlaces a ayuda anidada).
+- **Ayuda workspace** (`gw workspace --help`): banner contextual `workspace`, bloque explícito para `gw workspace key rotate` y `gw workspace key --help`.
+- **Ayuda workspace key** (`gw workspace key --help`): banner contextual `key`, nota sobre rotación y backup.
+- **Cabecera / tagline**: varias frases fijas en código; rotación ligera (hash de `cwd` + día UTC). Marco ASCII corto solo en TTY con política `GW_BANNER` auto; `GW_BANNER=0` la omite; `GW_BANNER=1` fuerza al menos título + tagline sin depender del TTY.
+- **ssh-keygen** (desde `cli.js`): se invoca con `-q` y `stdio: 'ignore'` mientras `term-ui.withSpinner` muestra progreso en stderr si aplica; los tests pueden inyectar `runSshKeygen` mock sin pasar por el CLI.
+
+| Variable | Comportamiento |
+|----------|----------------|
+| `NO_COLOR` | Sin secuencias de color. |
+| `GW_COLOR` | `0` sin color; `1` fuerza color (con `FORCE_COLOR` / reglas TTY en term-style). |
+| `GW_ICONS` | `0` prefijos ASCII; `1` Unicode en TTY. |
+| `GW_SPINNER` | `0` sin animación; `1` fuerza spinner si hay TTY en stderr. |
+| `GW_BANNER` | `0` sin cabecera divertida en ayudas; `1` fuerza cabecera. |
+
+El comando **`gw workspace pubkey`** no debe añadir iconos ni texto extra en stdout (solo la clave pública).
 
 ---
 
@@ -132,7 +153,8 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 - **Validación**: nombre según `WORKSPACE_NAME_REGEX` (`^[a-zA-Z0-9_-]+$`); email debe contener `@`. No puede existir ya un workspace con ese nombre.
 - **Flujo**:
   - Si faltan name/email y no se pasan por opciones → prompts.
-  - Clave: si `--identity-file` → comprobar que existe; si `--new-key` → generar Ed25519 en `~/.ssh/id_ed25519_<nombre>`, fallback a RSA 4096; si no → listar claves existentes (ssh-config.listIdentityFiles) y permitir elegir o generar nueva.
+  - Clave: si `--identity-file` → comprobar que existe; si `--new-key` → generar RSA 4096 en `~/.ssh/id_rsa_<nombre>`; si no → listar claves existentes (ssh-config.listIdentityFiles) y permitir elegir o generar nueva.
+  - Regla de clave pública: el archivo `.pub` asociado debe iniciar con `ssh-rsa`.
   - config.addWorkspace(nombre, { name, email, identityFile }).
 - **Salida**: mensaje "Workspace \"nombre\" añadido." o error; códigos USAGE/ENV/EXTERNAL.
 
@@ -162,11 +184,27 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 - **Descripción**: Actualiza name, email o identityFile del workspace (solo los indicados).
 - **Implementación**: config.updateWorkspace(nombre, { name?, email?, identityFile? }).
 
+### 6.6.1 workspace pubkey \<nombre\>
+
+- **Descripción**: Imprime en stdout la clave pública (`.pub`) del workspace.
+- **Validación**: la clave pública debe comenzar con `ssh-rsa`; si no cumple, retorna error de uso.
+- **Errores**: si no existe `.pub`, retorna error; si no puede leerse, error de entorno.
+
+### 6.6.2 workspace key rotate \<nombre\>
+
+- **Descripción**: Regenera la clave RSA del workspace con confirmación previa del usuario.
+- **Flujo**:
+  - Muestra un resumen de la operación y solicita confirmación explícita.
+  - Realiza backup de la clave actual (privada y `.pub`) con sufijo `.bak-YYYYMMDD-HHmmss`.
+  - Genera una nueva clave RSA 4096 en `~/.ssh/id_rsa_<workspace>`.
+  - Actualiza `identityFile` en la configuración del workspace.
+- **Errores**: si el usuario cancela, retorna error de uso; si falla backup o `ssh-keygen`, retorna error externo.
+
 ### 6.7 clone -w \<workspace\> \<url\> [args...]
 
 - **Descripción**: Clona con identidad del workspace. Crea alias SSH, clona, configura user.name/user.email en el repo y escribe [gw] workspace y gwWorkspace en origin.
 - **Opciones**: `-w` / `--workspace`; resto de argumentos se pasan a `git clone` (incl. `--dry-run`; --dry-run no se pasa a git pero se usa para solo imprimir qué se haría).
-- **Validación**: workspace existente, URL SSH (si es HTTPS se avisa y sale con error).
+- **Validación**: workspace existente, URL SSH (si es HTTPS se avisa y sale con error), y clave pública del workspace con prefijo `ssh-rsa`.
 - **Flujo**:
   - Obtener workspace; parseSshUrl(url); aliasHost = workspace + '.' + host; buildAliasedUrl; ensureHostAlias en ~/.ssh/config; git clone con URL aliada; en el directorio clonado: git config user.name, user.email; escribir/actualizar .git/config con [gw] workspace y gwWorkspace en remote "origin".
 
@@ -174,12 +212,14 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 
 - **Descripción**: Añade un remote con URL aliada y guarda gwWorkspace en ese remote.
 - **Requisitos**: estar en un repo; URL SSH; workspace existente.
+- **Validación adicional**: la clave pública del workspace (`.pub`) debe existir e iniciar con `ssh-rsa`.
 - **Flujo**: ensureHostAlias; git remote add \<name\> \<aliasedUrl\>; writeGitConfigSection para remote "\<name\>" con gwWorkspace = workspace.
 
 ### 6.9 remote set-url \<name\> -w \<workspace\> \<url\>
 
 - **Descripción**: Cambia la URL del remote a la aliada y asocia el remote al workspace (gwWorkspace).
 - **Flujo**: ensureHostAlias; setRemoteUrl(root, name, aliasedUrl); writeGitConfigSection para [gw] y remote "\<name\>" (workspace y gwWorkspace).
+- **Validación adicional**: la clave pública del workspace (`.pub`) debe existir e iniciar con `ssh-rsa`.
 
 ### 6.10 remote -v / remote list
 
@@ -210,6 +250,7 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 
 - **Descripción**: Asocia un repo ya clonado al workspace: configura user.name, user.email, [gw] workspace, cambia origin a URL aliada y pone gwWorkspace en origin.
 - **Requisitos**: estar en repo; existir remote origin con URL SSH; workspace existente.
+- **Validación adicional**: la clave pública del workspace (`.pub`) debe existir e iniciar con `ssh-rsa`.
 
 ### 6.16 doctor
 
@@ -250,13 +291,22 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 - `removeHostBlocksByWorkspace(workspaceName)` → elimina Host que empiecen por `<workspace>.`; devuelve número eliminado.
 - `getHostsForIdentityFile(identityFile)` → array de nombres Host que usan esa clave.
 
-### 7.4 url-utils.js
+### 7.4 ssh-key-utils.js
+
+- `publicKeyPath(identityFile)` → resuelve ruta `.pub` asociada.
+- `readPublicKey(identityFile)` → lee clave pública y devuelve estado de error/éxito.
+- `ensureSshRsaPublicKey(identityFile)` → valida existencia/lectura y prefijo `ssh-rsa`.
+- `buildBackupSuffix(date?)` → genera sufijo `.bak-YYYYMMDD-HHmmss`.
+- `moveIfExists(sourcePath, targetPath)` → mueve un archivo si existe.
+- `backupIdentityFiles(identityFile, suffix?)` → crea backup de privada y `.pub`.
+
+### 7.5 url-utils.js
 
 - `parseSshUrl(url)` → { host, pathPart, isSsh } o null.
 - `isSshUrl(url)` → boolean.
 - `buildAliasedUrl(originalUrl, aliasHost)` → string URL o null.
 
-### 7.5 git-context.js
+### 7.6 git-context.js
 
 - `findGitRoot(cwd)` → directorio raíz del repo o null (busca .git hacia arriba).
 - `parseGitConfig(content)` → { sections: { "[section]": { key: value } } }.
@@ -270,7 +320,7 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
 - `addRemote(cwd, name, url)` → Promise.
 - `writeGitConfigSection(cwd, section, key, value)` → añade o actualiza clave en sección; devuelve true/false.
 
-### 7.6 utils/validate.js
+### 7.7 utils/validate.js
 
 - `validateWorkspaceName(name)` → { valid: boolean, message?: string }.
 - `validateEmail(email)` → { valid: boolean, message?: string }.
@@ -299,6 +349,8 @@ Constantes en constants.js: `GIT_CONFIG_GW_SECTION = 'gw'`, `GIT_CONFIG_GW_WORKS
   - `test/ssh-config.test.js`: parseSshConfig, findHostBlock (contenido mock).
   - `test/url-utils.test.js`: parseSshUrl, isSshUrl, buildAliasedUrl (formatos git@host:path y ssh://).
   - `test/validate.test.js`: validateWorkspaceName, validateEmail.
+  - `test/ssh-key-utils.test.js`: validación de prefijo `ssh-rsa` y casos de `.pub` inexistente/inválido.
+  - `test/workspace-key-rotate.test.js`: flujo de rotación (`cancelación`, `backup`, `actualización de identityFile`, error de `ssh-keygen`).
 
 ---
 

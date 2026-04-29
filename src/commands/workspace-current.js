@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw workspace current
+ * Uso: Muestra el workspace asociado al repositorio actual.
+ * Ejemplo: gw workspace current
+ */
+
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');
 

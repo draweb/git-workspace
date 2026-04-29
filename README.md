@@ -86,6 +86,15 @@ Tras `npm link`, el comando `gw` apunta al código local del repo.
 
 Si `npm install -g @draweb/gw` responde **404**, la versión aún no está publicada en el registro: publica con `npm publish` desde este repo (cuenta npm con acceso al scope **@draweb** y 2FA/token según política de npm).
 
+## Paquete en npm
+
+- **Nombre del paquete**: `@draweb/gw`
+- **Comando global instalado**: `gw`
+- **Página del paquete**: [https://www.npmjs.com/package/@draweb/gw](https://www.npmjs.com/package/@draweb/gw)
+- **Instalar una versión específica**: `npm install -g @draweb/gw@1.0.2`
+- **Actualizar a la última versión**: `npm install -g @draweb/gw@latest`
+- **Ver versión publicada**: `npm view @draweb/gw version`
+
 ## Uso básico
 
 ### 1. Crear un workspace
@@ -94,14 +103,14 @@ Si `npm install -g @draweb/gw` responde **404**, la versión aún no está publi
 gw workspace add draweb
 ```
 
-Te pedirá nombre y email para git, y si usar una clave SSH existente o generar una nueva (estándar GitHub: Ed25519).
+Te pedirá nombre y email para git, y si usar una clave SSH existente o generar una nueva. Las claves nuevas se generan como **RSA 4096**, por lo que la pública asociada comienza con `ssh-rsa`.
 
 Modo no interactivo (scripts):
 
 ```bash
 gw workspace add draweb --name "Tu Nombre" --email tu@email.com --new-key
 # o con clave existente:
-gw workspace add draweb --name "Tu Nombre" --email tu@email.com --identity-file ~/.ssh/id_ed25519_draweb
+gw workspace add draweb --name "Tu Nombre" --email tu@email.com --identity-file ~/.ssh/id_rsa_draweb
 ```
 
 ### 2. Clonar con un workspace
@@ -131,7 +140,12 @@ gw workspace edit draweb --email nuevo@email.com
 gw workspace pubkey draweb
 # En Windows, copiar al portapapeles:
 gw workspace pubkey draweb | clip
+# Rotar clave RSA del workspace (con confirmación y backup):
+gw workspace key rotate draweb
 ```
+
+`gw workspace pubkey` valida que la clave pública del workspace inicie con `ssh-rsa`; si no cumple, devuelve error.
+`gw workspace key rotate` solicita confirmación explícita, hace backup de la clave anterior (`.bak-YYYYMMDD-HHmmss`) y genera una nueva RSA 4096 asociada al workspace.
 
 ### 4. Remotes con workspace (mirrors)
 
@@ -193,8 +207,20 @@ Para la ayuda de un comando de git: `gw commit --help` muestra la ayuda de `git 
 
 ## Ayuda en consola
 
-- `gw -h` / `gw --help` — visión general del CLI.
-- `gw workspace --help` — subcomandos de workspace (`add`, `list`, `show`, `pubkey`, `current`, `edit`, `remove`, …).
+- `gw -h` / `gw --help` — visión general del CLI (cabecera temática y secciones cuando la salida es una terminal).
+- `gw workspace --help` — subcomandos de workspace; incluye explícitamente **`gw workspace key rotate`** y la ruta `gw workspace key --help` (los subcomandos anidados no siempre aparecen en la lista de Commander hasta abrir esa ayuda).
+
+### Variables de entorno (presentación)
+
+| Variable | Efecto |
+|----------|--------|
+| `NO_COLOR` | Desactiva colores ANSI (convención estándar). |
+| `GW_COLOR=0` | Sin colores; `GW_COLOR=1` o `FORCE_COLOR` fuerzan color si procede. |
+| `GW_ICONS=0` | Iconos en modo ASCII (`[OK]`, …); `GW_ICONS=1` fuerza símbolos Unicode en terminal. |
+| `GW_SPINNER=0` | Sin animación durante `ssh-keygen`; `GW_SPINNER=1` fuerza spinner si hay TTY en stderr. |
+| `GW_BANNER=0` | Sin cabecera/tagline divertida en las ayudas; `GW_BANNER=1` muestra cabecera aunque la salida no sea TTY (útil para capturas). |
+
+`gw workspace pubkey` sigue imprimiendo **solo** la clave pública en stdout, sin iconos ni colores, para poder enrutar a `clip` u otras herramientas.
 
 ## Configuración
 

@@ -1,10 +1,17 @@
 'use strict';
 
+/**
+ * Comando: gw doctor (alias: gw check)
+ * Uso: Ejecuta diagnóstico de configuración de workspaces, claves y ssh config.
+ * Ejemplo: gw doctor
+ */
+
 const fs = require('fs');
 const config = require('../config');
 const sshConfig = require('../ssh-config');
 const gitContext = require('../git-context');
 const { EXIT_CODES } = require('../constants');
+const { iconOk, iconErr } = require('../term-ui');
 
 function run() {
   let hasError = false;
@@ -13,10 +20,10 @@ function run() {
   for (const [name, ws] of Object.entries(workspaces)) {
     const keyExists = fs.existsSync(ws.identityFile);
     if (!keyExists) {
-      console.error('  [ERROR]', name, ': identityFile no existe:', ws.identityFile);
+      console.error('  ' + iconErr(process.stderr) + name + ': identityFile no existe:', ws.identityFile);
       hasError = true;
     } else {
-      console.log('  [OK]', name);
+      console.log('  ' + iconOk(process.stdout) + name);
     }
   }
   const sshPath = sshConfig.getSshConfigPath();
@@ -34,7 +41,7 @@ function run() {
     console.error('~/.ssh/config no existe o no es escribible.');
     hasError = true;
   } else {
-    console.log('~/.ssh/config: OK');
+    console.log(iconOk(process.stdout) + '~/.ssh/config: OK');
   }
   const root = gitContext.findGitRoot(process.cwd());
   if (root) {

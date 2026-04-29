@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Comando: gw workspace show <nombre>
+ * Uso: Muestra el detalle del workspace (name, email, key, hosts).
+ * Ejemplo: gw workspace show draweb
+ */
+
 const config = require('../config');
 const sshConfig = require('../ssh-config');
 const { validateWorkspaceName } = require('../utils/validate');

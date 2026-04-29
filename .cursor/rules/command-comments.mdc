@@ -1,0 +1,32 @@
+---
+description: Exigir comentarios de propósito y uso en archivos de comandos
+globs: src/commands/*.js
+alwaysApply: false
+---
+
+# Comentarios obligatorios en comandos
+
+Para cualquier archivo en `src/commands/*.js`, agrega un bloque de comentario al inicio del archivo.
+
+## Estructura requerida
+
+Incluye estos 3 campos, en este orden:
+
+1. `Comando:` sintaxis principal del comando.
+2. `Uso:` para qué sirve el comando.
+3. `Ejemplo:` un ejemplo real de ejecución.
+
+## Formato recomendado
+
+```js
+/**
+ * Comando: gw <grupo> <subcomando> [opciones]
+ * Uso: Explica el propósito del comando.
+ * Ejemplo: gw <grupo> <subcomando> ...
+ */
+```
+
+## Regla de mantenimiento
+
+- Si se modifica la sintaxis u opciones de un comando, actualiza también su comentario de cabecera.
+- No dejes comandos sin comentario de cabecera.
